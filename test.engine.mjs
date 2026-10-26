@@ -52,6 +52,22 @@ r = await call("edit", { backend: "cloud", tex, cmd: "x" });
 assert.equal(r.status, 502); assert.doesNotMatch((await r.json()).error, /^Server error/);
 assert.equal(JSON.parse(seen[0]).reasoning.enabled, false);                // cloud asks free models not to "think"
 
+// --- a model that insists on reasoning (400 when it's disabled) is retried once without the flag, then used normally
+seen.length = 0;
+mock((u, body) => body.reasoning ? Response.json({ error: { message: "Reasoning is mandatory for this endpoint and cannot be disabled." } }, { status: 400 }) : reply(block("  \\item Worked on the checkout page", "  \\item Built the checkout page")));
+r = await call("edit", { backend: "cloud", tex, cmd: "x" });
+assert.equal(r.status, 200); assert.equal(seen.length, 2); assert.equal(seen[0].body.reasoning.enabled, false); assert.equal(seen[1].body.reasoning, undefined);
+// ...and an unrelated 400 from one model falls through to the next instead of failing the whole request
+seen.length = 0; n = 0;
+mock(() => ++n === 1 ? Response.json({ error: { message: "bad param" } }, { status: 400 }) : reply(block("  \\item Worked on the checkout page", "  \\item Built the checkout page")));
+r = await call("edit", { backend: "cloud", tex, cmd: "x" }); assert.equal(r.status, 200); assert.notEqual(seen[0].body.model, seen[1].body.model);
+
+// --- out of credit (402) on paid models -> skips remaining paid models and uses the free one
+seen.length = 0;
+mock((u, body) => body.model.endsWith(":free") ? reply(block("  \\item Worked on the checkout page", "  \\item Built the checkout page")) : Response.json({ error: { message: "Insufficient credits" } }, { status: 402 }));
+r = await call("edit", { backend: "cloud", tex, cmd: "x" });
+assert.equal(r.status, 200); assert.equal(seen.filter(x => !x.body.model.endsWith(":free")).length, 1); assert.ok(seen.at(-1).body.model.endsWith(":free"));
+
 // --- bad key -> one attempt, no pointless retries
 seen.length = 0;
 mock(() => Response.json({ error: { message: "No auth" } }, { status: 401 }));

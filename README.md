@@ -34,10 +34,11 @@ Updating a LaTeX resume for each application is slow: move a section, reword a b
 
 | | **Local** | **Cloud** |
 |---|---|---|
-| Model | Qwen3.5-9B (4-bit) via [oMLX](https://github.com/jundot/omlx) on your Mac | free OpenRouter models, with fallback if one is busy |
+| Model | Qwen3.5-9B (4-bit) via [oMLX](https://github.com/jundot/omlx) on your Mac | Qwen 3.7 Flash via OpenRouter, with Mistral Small and Claude Haiku as fallbacks |
 | Where your resume goes | nowhere: model and LaTeX compiler both run on your machine | the server (to compile) and OpenRouter (free models may log prompts) |
 | Needs | Apple Silicon Mac, oMLX, `tectonic` | nothing; works on the hosted site |
-| Speed | ~2–8 s per command | ~5–15 s, depends on the free model |
+| Speed | ~2–8 s per command | ~1–3 s per command |
+| Cost | free | about $0.08 per 1,000 commands |
 
 The toggle is in the header. On the hosted site **Local is disabled**: a cloud server can't reach your computer. Run the app yourself to use it.
 
@@ -77,7 +78,7 @@ printf '%s' "$OPENROUTER_API_KEY" | npx vercel env add OPENROUTER_API_KEY produc
 npx vercel --prod
 ```
 
-How it works there: the build step (`scripts/prepare-tectonic.mjs`) downloads the Linux `tectonic` binary and pre-fills its package cache; the functions in `api/` copy that cache to `/tmp` on cold start and compile with it. `public/` is served as static files. Free OpenRouter models are rate limited (about 50 requests/day on a free account), and the server adds a per-IP limit, so heavy public traffic will run out; add OpenRouter credit to raise the cap.
+How it works there: the build step (`scripts/prepare-tectonic.mjs`) downloads the Linux `tectonic` binary and pre-fills its package cache; the functions in `api/` copy that cache to `/tmp` on cold start and compile with it. `public/` is served as static files. The server adds a per-IP rate limit; the OpenRouter key's own spending limit is the real cap.
 
 ## Tests
 
@@ -98,9 +99,21 @@ scripts/         Vercel build step (tectonic binary + cache)
 public/          UI (index.html, sayresume.js, extract.js, styles.css), sample.tex, vendored PDF.js
 ```
 
-## Honest notes on Cloud mode
+## Cloud models, cost and safety
 
-The hosted site uses **free** OpenRouter models, which are the weak link: they are rate limited (about 50 requests/day per free account, shared by every visitor), sometimes slow or briefly down, and noticeably worse than the local model at following the edit format and at not inventing things. In testing, a free model "added" a job by cloning an existing entry, and another invented a title, dates and duties. The server guards against this for "add" commands (it rejects edits that overwrite existing wording, clone bullets, add nothing that was asked for, or introduce wording that is in neither the resume nor the command, and it tells the model to ask instead), but a stronger model is the real fix. To use one, add credit on OpenRouter and set `CLOUD_MODELS` (for example `anthropic/claude-haiku-4.5`) in Vercel's environment variables; no code change is needed.
+The cloud default is a short chain of cheap paid models, chosen by benchmarking eight edit commands through the real pipeline (add, rewrite, move, remove, shorten, and one "add a job I never described" trap that must be refused). Each scored 8/8 on two runs:
+
+| Model | Median | Cost per 1,000 commands |
+|---|---|---|
+| `qwen/qwen3.7-flash` (default) | 1.0 s | $0.08 |
+| `mistralai/mistral-small-3.2-24b-instruct` | 1.7 s | $0.16 |
+| `anthropic/claude-haiku-5.5` | 1.5–1.8 s | $0.27 |
+
+They are tried in that order if one is slow or down; a free model is the last resort so the app keeps working if credit runs out. Change the list with `CLOUD_MODELS` (a comma-separated list of OpenRouter ids). Free `:free` models were much worse in testing (rate limits, 50 s stalls, and one invented a job's title, dates and duties).
+
+Models can still invent facts, so for "add" commands the server rejects edits that overwrite existing wording, clone bullets, add nothing that was asked for, or introduce wording that is in neither the resume nor the command, and tells the model to ask instead.
+
+**Because the public site spends real money, set a spending limit on the OpenRouter key** (OpenRouter → Keys → the key → credit limit). The per-IP rate limit in the code is per server instance, so it is not a hard cap.
 
 ## Limits
 

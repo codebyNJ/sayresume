@@ -135,7 +135,7 @@ for (const c of ["Make my Acme bullets sound stronger", "Add a bullet under Acme
 
 const NOTE = {
   local: "Local · stays on this computer",
-  cloud: "Cloud · your resume text goes to this server and OpenRouter (free models may log prompts)",
+  cloud: "Cloud · your resume text goes to this server, OpenRouter and the model provider",
 };
 function paintMode() {
   for (const b of document.querySelectorAll("#mode button")) {
