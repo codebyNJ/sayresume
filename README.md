@@ -93,9 +93,9 @@ npm test      # edit engine + backends (model calls mocked, LaTeX compile is rea
 lib/edits.mjs    pure text logic: parse/apply edits, move sections, guards
 lib/engine.mjs   backends (local/cloud), compile, edit/import loops, HTTP handlers
 api/*.mjs        thin Vercel functions (edit, import, compile, health)
-server.mjs       local server: static files + the same handlers
+local.mjs       local server: static files + the same handlers
 scripts/         Vercel build step (tectonic binary + cache)
-public/          UI (index.html, app.js, extract.js, styles.css), sample.tex, vendored PDF.js
+public/          UI (index.html, sayresume.js, extract.js, styles.css), sample.tex, vendored PDF.js
 ```
 
 ## Limits

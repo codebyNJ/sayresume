@@ -2,3 +2,4 @@ demo-voice
 .playwright-mcp
 node_modules
 test.mjs
+local.mjs
