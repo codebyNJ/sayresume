@@ -1,11 +1,23 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
   "buildCommand": "node scripts/prepare-tectonic.mjs",
   "outputDirectory": "public",
   "functions": {
-    "api/edit.mjs": { "maxDuration": 120, "includeFiles": "{bin/**,public/sample.tex}" },
-    "api/import.mjs": { "maxDuration": 120, "includeFiles": "{bin/**,public/sample.tex}" },
-    "api/compile.mjs": { "maxDuration": 120, "includeFiles": "bin/**" },
-    "api/health.mjs": { "maxDuration": 10 }
+    "api/edit.mjs": {
+      "maxDuration": 120,
+      "includeFiles": "{bin/**,public/sample.tex}"
+    },
+    "api/import.mjs": {
+      "maxDuration": 120,
+      "includeFiles": "{bin/**,public/sample.tex}"
+    },
+    "api/compile.mjs": {
+      "maxDuration": 120,
+      "includeFiles": "bin/**"
+    },
+    "api/health.mjs": {
+      "maxDuration": 10
+    }
   }
 }
