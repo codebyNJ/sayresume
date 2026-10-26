@@ -97,6 +97,10 @@ seen.length = 0; n = 0;
 mock(() => reply(++n === 1 ? block("\\end{itemize}\n\n\\section*{Projects}", "\\end{itemize}\n\n\\textbf{Software Engineer, Google} \\hfill 2022 -- 2023\n\\begin{itemize}\n  \\item Designed and implemented scalable backend services\n\\end{itemize}\n\n\\section*{Projects}") : "NOCHANGE: What was your role at Google?"));
 d = await (await call("edit", { backend: "cloud", tex, cmd: "Add my job at Google" })).json();
 assert.match(d.message, /role at Google/); assert.match(seen[1].body.messages.at(-1).content, /That is invented/);
+// ...if the model keeps guessing, the person gets a plain explanation, not the model-facing guard text
+mock(() => reply(block("\\end{itemize}\n\n\\section*{Projects}", "\\end{itemize}\n\n\\textbf{Software Engineer, Google} \\hfill 2022 -- 2023\n\\begin{itemize}\n  \\item Designed and implemented scalable backend services\n\\end{itemize}\n\n\\section*{Projects}")));
+r = await call("edit", { backend: "cloud", tex, cmd: "Add my job at Google" });
+assert.equal(r.status, 422); const em = (await r.json()).error; assert.match(em, /without guessing details/); assert.doesNotMatch(em, /Your edit/);
 // ...but the same overwrite is fine when the user asked to change it
 n = 0; mock(() => reply(block("\\textbf{Software Engineer, Acme Pay} \\hfill 2023 -- Present \\\\", "\\textbf{Software Engineer, Google} \\hfill 2023 -- Present \\\\")));
 d = await (await call("edit", { backend: "cloud", tex, cmd: "Change my employer to Google" })).json();
