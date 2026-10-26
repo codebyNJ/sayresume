@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SayResume</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎙️</text></svg>">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header>
+  <h1>Say<span>Resume</span></h1>
+  <span id="status" class="pill">checking model…</span>
+  <div class="spacer"></div>
+  <label class="btn">Upload resume<input id="file" type="file" accept=".tex,.pdf,.docx,.doc,.rtf,.odt,.txt,.md" hidden></label>
+  <button id="undo">Undo</button><button id="redo">Redo</button>
+  <button id="dlTex">.tex</button><button id="dlPdf">PDF</button>
+  <button id="reset" title="Load the sample resume">Sample</button>
+</header>
+<main>
+  <section class="pane cmdpane">
+    <label for="cmd">Say what to change</label>
+    <textarea id="cmd" placeholder="Dictate with Wispr Flow, macOS Dictation, or anything else, or type and press Enter…" autofocus></textarea>
+    <div class="hint">Dictated text sends itself. Typed text sends on Enter.</div>
+    <div class="chips" id="chips"></div>
+    <div id="log" aria-live="polite"></div>
+  </section>
+  <section class="pane srcpane">
+    <div class="panehead">main.tex <small id="saved"></small></div>
+    <textarea id="src" spellcheck="false"></textarea>
+  </section>
+  <section class="pane pdfpane">
+    <div class="panehead">Preview <small id="cstat"></small></div>
+    <iframe id="pdf" title="Resume PDF preview"></iframe>
+  </section>
+</main>
+<script type="module" src="/app.js"></script>
+</body>
+</html>

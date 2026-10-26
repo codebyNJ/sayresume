@@ -1,0 +1,60 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { parseBlocks, parseMoves, applyEdits, moveSection, extractLatex, noChange, newDuplicateSection, lostSection } from "./edits.mjs";
+
+const tex = readFileSync(new URL("./public/sample.tex", import.meta.url), "utf8");
+const block = (s, r) => `<<<<<<< SEARCH\n${s}\n=======\n${r}\n>>>>>>> REPLACE`;
+
+// model reply with thinking, prose and two blocks
+const reply = `<think>hmm</think>Sure:\n${block("  \\item Worked on the checkout page", "  \\item Rebuilt the checkout page")}\n\n${block("  \\item Helped with code reviews", "  \\item Helped with code reviews\n  \\item Reduced page load time by 40\\%")}`;
+const blocks = parseBlocks(reply);
+assert.equal(blocks.length, 2);
+const out = applyEdits(tex, blocks);
+assert.match(out, /Rebuilt the checkout page/);
+assert.match(out, /Helped with code reviews\n  \\item Reduced page load time by 40\\%/);
+assert.doesNotMatch(out, /Worked on the checkout/);
+
+// sloppy markers from a small model (seen with gemma-4-e2b): missing <<<<<<<, short =====
+assert.deepEqual(parseBlocks("SEARCH\na\nb\n=====\nc\n>>>>>>> REPLACE"), [{ search: "a\nb", replace: "c" }]);
+assert.equal(parseBlocks("```\n<<<<<<<SEARCH\na\n=======\n\nREPLACE\n```").length, 1);
+
+// delete (empty REPLACE) and whitespace-drifted SEARCH
+assert.equal(parseBlocks(block("x", "")).at(0).replace, "");
+assert.doesNotMatch(applyEdits(tex, [{ search: "\\item Fixed bugs in the payments API   ", replace: "" }]), /Fixed bugs/);
+
+// errors: not found, ambiguous, empty
+assert.throws(() => applyEdits(tex, [{ search: "\\item Nope", replace: "" }]), /not found/);
+assert.throws(() => applyEdits(tex, [{ search: "\\begin{itemize}", replace: "" }]), /matches 2 places/);
+assert.throws(() => applyEdits(tex, [{ search: " ", replace: "x" }]), /empty/);
+// unescaped percent after a number gets escaped; already-escaped stays as is
+assert.match(applyEdits(tex, [{ search: "Git", replace: "Git (40% faster, 5\\% more)" }]), /Git \(40\\% faster, 5\\% more\)/);
+// "$&" in replacement must be literal, not a regex back-reference
+assert.match(applyEdits(tex, [{ search: "Git", replace: "Git, $& AWS" }]), /Git, \$& AWS/);
+
+// a "move" that forgot to delete the original
+const copied = applyEdits(tex, [{ search: "\\section*{Experience}", replace: "\\section*{Skills}\nGit\n\n\\section*{Experience}" }]);
+assert.equal(newDuplicateSection(tex, copied), "skills");
+assert.equal(newDuplicateSection(tex, out), null);
+
+// MOVE lines: parsed loosely, executed by code, content preserved exactly
+const order = t => [...t.matchAll(/\\section\*\{([^}]*)\}/g)].map(m => m[1]).join(",");
+const mv = parseMoves("Sure.\nMOVE: Skills BEFORE Experience\n- MOVE: \"education\" after summary");
+assert.deepEqual(mv.map(m => m.where), ["BEFORE", "AFTER"]);
+const moved = mv.reduce(moveSection, tex);
+assert.equal(order(moved), "Summary,Education,Skills,Experience,Projects");
+assert.equal(moved.length, tex.length);                                   // nothing lost or duplicated
+assert.equal(order(moveSection(tex, { section: "Summary", where: "AFTER", target: "Skills" })), "Experience,Projects,Education,Skills,Summary");
+assert.match(moveSection(tex, { section: "Summary", where: "AFTER", target: "Skills" }), /Git\n\n\\section\*\{Summary\}[\s\S]*\n\\end\{document\}/);
+assert.throws(() => moveSection(tex, { section: "Hobbies", where: "AFTER", target: "Skills" }), /no section called "Hobbies"/);
+assert.equal(lostSection(tex, tex.replace(/\\section\*\{Education\}[\s\S]*?(?=\\section)/, "")), "education");
+assert.equal(lostSection(tex, moved), null);
+assert.equal(noChange("MOVE: Skills BEFORE Experience"), null);
+assert.deepEqual(parseMoves("MOVE: \\section*{Skills} BEFORE \\section*{Experience}")[0], { section: "Skills", where: "BEFORE", target: "Experience" });
+// deleting a section doesn't leave a pile of blank lines
+assert.doesNotMatch(applyEdits(tex, [{ search: "\\section*{Projects}\n\\textbf{Kirana Billing App} \\hfill 2024", replace: "" }]), /\n\n\n/);
+
+assert.equal(extractLatex("here:\n```latex\n" + tex + "```"), tex);
+assert.throws(() => extractLatex("no latex"));
+assert.equal(noChange("NOCHANGE: Which job do you mean?"), "Which job do you mean?");
+assert.equal(noChange(reply), null);
+console.log("ok");
