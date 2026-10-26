@@ -1,3 +1,5 @@
+import { extractText } from "./extract.js";
+
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const store = { get: k => { try { return localStorage.getItem(k) } catch { return null } }, set: (k, v) => { try { localStorage.setItem(k, v) } catch {} } };
@@ -6,7 +8,10 @@ const store = { get: k => { try { return localStorage.getItem(k) } catch { retur
 let hist = [], pos = -1, pdfB64 = null, pdfUrl = null;
 const tex = () => hist[pos];
 
-async function api(path, body) {
+// Which model does the editing: "local" (oMLX on this computer) or "cloud" (OpenRouter via the server).
+let backend = store.get("backend") || "local", H = {};
+const api = (path, body) => post(path, { ...body, backend });
+async function post(path, body) {
   const r = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
   const data = await r.json().catch(() => ({ error: `Server error ${r.status}` }));
   if (!r.ok || data.error) throw new Error(data.error || `Server error ${r.status}`);
@@ -28,7 +33,7 @@ function showPdf(b64) {
 
 async function recompile() {
   $("cstat").textContent = "· compiling…";
-  const c = await api("/api/compile", { tex: tex() }).catch(e => ({ ok: false, log: e.message }));
+  const c = await post("/api/compile", { tex: tex() }).catch(e => ({ ok: false, log: e.message }));
   if (c.ok) showPdf(c.pdf); else $("cstat").textContent = "· LaTeX error: " + c.log.split("\n")[0];
 }
 
@@ -67,7 +72,7 @@ async function run(text) {
   if (short && /\b(download|export)\b/.test(c)) { say("you", esc(text)); return download(/\b(tex|latex|source)\b/.test(c) ? "tex" : "pdf"); }
   busy = true; $("cmd").disabled = true;
   say("you", esc(text));
-  const reply = say("", "Thinking… (local model)");
+  const reply = say("", `Thinking… (${backend} model)`);
   const t0 = performance.now();
   try {
     const r = await api("/api/edit", { tex: tex(), cmd: text });
@@ -113,10 +118,9 @@ $("file").addEventListener("change", async e => {
   const f = e.target.files[0]; e.target.value = "";
   if (!f) return;
   if (f.name.toLowerCase().endsWith(".tex")) { commit(await f.text()); return say("", `Loaded ${esc(f.name)}.`); }
-  const w = say("", `Reading ${esc(f.name)} and converting to LaTeX with the local model… (can take a minute)`);
+  const w = say("", `Reading ${esc(f.name)} and converting to LaTeX with the ${backend} model… (can take a minute)`);
   try {
-    const data = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result.split(",")[1]); r.onerror = no; r.readAsDataURL(f); });
-    const r = await api("/api/import", { name: f.name, data });
+    const r = await api("/api/import", { text: await extractText(f) });
     commit(r.tex, r.pdf); w.textContent = `Imported ${f.name}. Now say what to fix.`;
   } catch (err) { w.className = "m err"; w.textContent = err.message; }
 });
@@ -129,13 +133,30 @@ for (const c of ["Make my Acme bullets sound stronger", "Add a bullet under Acme
   const b = document.createElement("button"); b.textContent = c; b.onclick = () => run(c); $("chips").append(b);
 }
 
-async function health() {
-  const h = await fetch("/api/health").then(r => r.json()).catch(() => ({}));
-  $("status").className = "pill " + (h.loaded ? "ok" : "bad");
-  $("status").textContent = h.loaded ? `local model: ${h.model}` : h.up ? `model ${h.model} not in oMLX` : "oMLX not running";
+const NOTE = {
+  local: "Local · stays on this computer",
+  cloud: "Cloud · your resume text goes to this server and OpenRouter (free models may log prompts)",
+};
+function paintMode() {
+  for (const b of document.querySelectorAll("#mode button")) {
+    const info = H[b.dataset.b];
+    b.disabled = !info?.available;
+    b.title = info?.available ? `${b.dataset.b} model: ${info.model}` : info?.reason || "";
+    b.setAttribute("aria-pressed", b.dataset.b === backend);
+  }
+  const info = H[backend];
+  $("status").className = "pill " + (info?.available ? "ok" : "bad");
+  $("status").textContent = info?.available ? `${NOTE[backend]} · ${info.model}` : info?.reason || "checking…";
 }
+async function health() {
+  H = await fetch("/api/health").then(r => r.json()).catch(() => ({}));
+  // Fall back to whichever backend works if the saved choice is unavailable.
+  if (!H[backend]?.available) backend = ["local", "cloud"].find(n => H[n]?.available) || backend;
+  paintMode();
+}
+for (const b of document.querySelectorAll("#mode button")) b.onclick = () => { backend = b.dataset.b; store.set("backend", backend); paintMode(); say("", `Switched to ${backend}. ${NOTE[backend]}.`); };
 
 try { hist = JSON.parse(store.get("hist")) || []; } catch {}
 if (!hist.length) hist = [await (await fetch("/sample.tex")).text()];
 pos = hist.length - 1; $("src").value = tex();
-recompile(); health(); setInterval(health, 15000);
+health().then(recompile); setInterval(health, 15000);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { parseBlocks, parseMoves, applyEdits, moveSection, extractLatex, noChange, newDuplicateSection, lostSection } from "./edits.mjs";
+import { parseBlocks, parseMoves, applyEdits, moveSection, extractLatex, noChange, newDuplicateSection, lostSection } from "./lib/edits.mjs";
 
 const tex = readFileSync(new URL("./public/sample.tex", import.meta.url), "utf8");
 const block = (s, r) => `<<<<<<< SEARCH\n${s}\n=======\n${r}\n>>>>>>> REPLACE`;

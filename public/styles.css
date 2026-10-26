@@ -32,3 +32,9 @@ textarea { font:inherit; color:inherit; background:var(--bg); border:1px solid v
 .diff .d { background:var(--del); color:var(--delInk) } .diff .a { background:var(--add); color:var(--addInk) }
 .diff div { padding:0 4px; border-radius:3px }
 small { color:var(--mute) }
+
+#mode { display:inline-flex; border:1px solid var(--line); border-radius:999px; overflow:hidden }
+#mode button { border:0; border-radius:0; padding:4px 14px; background:var(--card) }
+#mode button[aria-pressed=true] { background:var(--acc); color:#fff }
+#mode button:disabled { opacity:.45; cursor:not-allowed }
+.pill { max-width:46ch; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }

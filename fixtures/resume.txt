@@ -1,0 +1,13 @@
+PRIYA SHARMA
+priya.sharma@example.com | Pune | +91 90000 11111
+
+WORK HISTORY
+Data Analyst, Infosys (Jan 2022 - now)
+- Built sales dashboards in Power BI & Excel for 3 regional teams
+- Automated weekly reports with Python, saving 6 hours a week
+
+EDUCATION
+B.Sc Statistics, Fergusson College, 2021
+
+SKILLS
+SQL, Python, Power BI, Excel

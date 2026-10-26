@@ -5,14 +5,15 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SayResume</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎙️</text></svg>">
-<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="./styles.css">
 </head>
 <body>
 <header>
   <h1>Say<span>Resume</span></h1>
-  <span id="status" class="pill">checking model…</span>
+  <div id="mode" role="group" aria-label="Which model edits your resume"><button data-b="local" aria-pressed="false">Local</button><button data-b="cloud" aria-pressed="false">Cloud</button></div>
+  <span id="status" class="pill">checking…</span>
   <div class="spacer"></div>
-  <label class="btn">Upload resume<input id="file" type="file" accept=".tex,.pdf,.docx,.doc,.rtf,.odt,.txt,.md" hidden></label>
+  <label class="btn">Upload resume<input id="file" type="file" accept=".tex,.pdf,.docx,.txt,.md" hidden></label>
   <button id="undo">Undo</button><button id="redo">Redo</button>
   <button id="dlTex">.tex</button><button id="dlPdf">PDF</button>
   <button id="reset" title="Load the sample resume">Sample</button>
@@ -34,6 +35,6 @@
     <iframe id="pdf" title="Resume PDF preview"></iframe>
   </section>
 </main>
-<script type="module" src="/app.js"></script>
+<script type="module" src="./app.js"></script>
 </body>
 </html>
