@@ -92,6 +92,11 @@ const acmeBlock = tex.slice(tex.indexOf("\\textbf{Software Engineer, Acme Pay}")
 mock(() => reply(++n === 1 ? block(acmeBlock, acmeBlock + "\n\n" + acmeBlock.replace("Acme Pay", "Google")) : "NOCHANGE: Which role and dates at Google?"));
 d = await (await call("edit", { backend: "cloud", tex, cmd: "Add my job at Google" })).json();
 assert.match(d.message, /role and dates/); assert.match(seen[1].body.messages.at(-1).content, /copies existing bullets/);
+// ...and a made-up Google job (new title, dates, duties) is sent back
+seen.length = 0; n = 0;
+mock(() => reply(++n === 1 ? block("\\end{itemize}\n\n\\section*{Projects}", "\\end{itemize}\n\n\\textbf{Software Engineer, Google} \\hfill 2022 -- 2023\n\\begin{itemize}\n  \\item Designed and implemented scalable backend services\n\\end{itemize}\n\n\\section*{Projects}") : "NOCHANGE: What was your role at Google?"));
+d = await (await call("edit", { backend: "cloud", tex, cmd: "Add my job at Google" })).json();
+assert.match(d.message, /role at Google/); assert.match(seen[1].body.messages.at(-1).content, /That is invented/);
 // ...but the same overwrite is fine when the user asked to change it
 n = 0; mock(() => reply(block("\\textbf{Software Engineer, Acme Pay} \\hfill 2023 -- Present \\\\", "\\textbf{Software Engineer, Google} \\hfill 2023 -- Present \\\\")));
 d = await (await call("edit", { backend: "cloud", tex, cmd: "Change my employer to Google" })).json();

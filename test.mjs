@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { parseBlocks, parseMoves, applyEdits, moveSection, extractLatex, noChange, newDuplicateSection, lostSection, droppedWords, isAddOnly, notAdded, clonedBullets } from "./lib/edits.mjs";
+import { parseBlocks, parseMoves, applyEdits, moveSection, extractLatex, noChange, newDuplicateSection, lostSection, droppedWords, isAddOnly, notAdded, clonedBullets, inventedWords } from "./lib/edits.mjs";
 
 const tex = readFileSync(new URL("./public/sample.tex", import.meta.url), "utf8");
 const block = (s, r) => `<<<<<<< SEARCH\n${s}\n=======\n${r}\n>>>>>>> REPLACE`;
@@ -43,6 +43,13 @@ const acme = tex.slice(tex.indexOf("\\textbf{Software Engineer, Acme Pay}"), tex
 const fake = applyEdits(tex, [{ search: acme.trim(), replace: acme.trim() + "\n\n" + acme.trim().replace("Acme Pay", "Google") }]);
 assert.deepEqual(clonedBullets(tex, fake).length, 3);
 assert.deepEqual(clonedBullets(tex, applyEdits(tex, [{ search: "  \\item Helped with code reviews", replace: "  \\item Helped with code reviews\n  \\item Cut load time by 40%" }])), []);
+
+// invented detail for an "add": new titles/dates/duties that aren't in the resume or the command
+const invented = applyEdits(tex, [{ search: "\\end{itemize}\n\n\\section*{Projects}", replace: "\\end{itemize}\n\n\\textbf{Software Engineer, Google} \\hfill 2022 -- 2023\n\\begin{itemize}\n  \\item Designed and implemented scalable backend services\n\\end{itemize}\n\n\\section*{Projects}" }]);
+assert.ok(inventedWords("Add my job at Google", tex, invented).length >= 5);
+assert.deepEqual(inventedWords("add a bullet saying I reduced page load time by forty percent", tex, tex.replace("Git", "Git\n\\item Reduced page load time by 40\\%")), []);
+assert.deepEqual(inventedWords("add AWS and Docker to my skills", tex, tex.replace("Git", "Git, AWS, Docker")), []);
+assert.deepEqual(inventedWords("add a section called Certifications with AWS Cloud Practitioner", tex, tex.replace("\\end{document}", "\\section*{Certifications}\nAWS Cloud Practitioner\n\\end{document}")), []);
 
 // delete (empty REPLACE) and whitespace-drifted SEARCH
 assert.equal(parseBlocks(block("x", "")).at(0).replace, "");

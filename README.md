@@ -98,6 +98,10 @@ scripts/         Vercel build step (tectonic binary + cache)
 public/          UI (index.html, sayresume.js, extract.js, styles.css), sample.tex, vendored PDF.js
 ```
 
+## Honest notes on Cloud mode
+
+The hosted site uses **free** OpenRouter models, which are the weak link: they are rate limited (about 50 requests/day per free account, shared by every visitor), sometimes slow or briefly down, and noticeably worse than the local model at following the edit format and at not inventing things. In testing, a free model "added" a job by cloning an existing entry, and another invented a title, dates and duties. The server guards against this for "add" commands (it rejects edits that overwrite existing wording, clone bullets, add nothing that was asked for, or introduce wording that is in neither the resume nor the command, and it tells the model to ask instead), but a stronger model is the real fix. To use one, add credit on OpenRouter and set `CLOUD_MODELS` (for example `anthropic/claude-haiku-4.5`) in Vercel's environment variables; no code change is needed.
+
 ## Limits
 
 - Cloud quality and speed depend on whichever free model is available; Local needs a Mac with enough memory for a 9B model.
