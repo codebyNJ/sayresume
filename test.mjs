@@ -28,6 +28,9 @@ assert.throws(() => applyEdits(tex, [{ search: "\\begin{itemize}", replace: "" }
 assert.throws(() => applyEdits(tex, [{ search: " ", replace: "x" }]), /empty/);
 // unescaped percent after a number gets escaped; already-escaped stays as is
 assert.match(applyEdits(tex, [{ search: "Git", replace: "Git (40% faster, 5\\% more)" }]), /Git \(40\\% faster, 5\\% more\)/);
+// a stray trailing \\ on a bullet is removed, but \\ elsewhere is untouched
+assert.match(applyEdits(tex, [{ search: "  \\item Helped with code reviews", replace: "  \\item Helped with code reviews\n  \\item Cut load time by 40\\% \\\\" }]), /load time by 40\\%\n/);
+assert.match(applyEdits(tex, [{ search: "\\textit{Bengaluru}", replace: "\\textit{Bengaluru} \\\\" }]), /Bengaluru\} \\\\/);
 // "$&" in replacement must be literal, not a regex back-reference
 assert.match(applyEdits(tex, [{ search: "Git", replace: "Git, $& AWS" }]), /Git, \$& AWS/);
 

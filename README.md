@@ -4,7 +4,7 @@
 
 Built for [No Hands: The Wispr Challenge](https://www.wemakedevs.org/wispr) (WeMakeDevs × Wispr Flow).
 
-- **Live demo:** _add Vercel URL_ (Cloud mode only; Local needs the app on your own computer)
+- **Live demo:** https://sayresume.vercel.app (Cloud mode only; Local needs the app on your own computer)
 - **Demo video:** _add link_
 
 ![SayResume: commands on the left, LaTeX in the middle, live PDF on the right](demo-voice/voice-session.png)
