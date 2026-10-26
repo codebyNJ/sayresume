@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { parseBlocks, parseMoves, applyEdits, moveSection, extractLatex, noChange, newDuplicateSection, lostSection, droppedWords, isAddOnly, notAdded } from "./lib/edits.mjs";
+import { parseBlocks, parseMoves, applyEdits, moveSection, extractLatex, noChange, newDuplicateSection, lostSection, droppedWords, isAddOnly, notAdded, clonedBullets } from "./lib/edits.mjs";
 
 const tex = readFileSync(new URL("./public/sample.tex", import.meta.url), "utf8");
 const block = (s, r) => `<<<<<<< SEARCH\n${s}\n=======\n${r}\n>>>>>>> REPLACE`;
@@ -37,6 +37,12 @@ assert.deepEqual(notAdded("add my job at Google", tex, tex.replace("Git", "Git\n
 assert.deepEqual(notAdded("add AWS and Docker to my skills", tex, tex.replace("Git", "Git, AWS, Docker")), []);
 assert.deepEqual(notAdded("add a bullet about reduced page load time by forty percent", tex, tex.replace("Git", "Git\nReduced page load time")), []);
 assert.deepEqual(notAdded("add another bullet to the checkout page", tex, tex), []);       // nothing new was named -> no check
+
+// cloning the Acme entry to fake a Google job (seen from a free cloud model) is flagged; a genuinely new bullet is not
+const acme = tex.slice(tex.indexOf("\\textbf{Software Engineer, Acme Pay}"), tex.indexOf("\\section*{Projects}"));
+const fake = applyEdits(tex, [{ search: acme.trim(), replace: acme.trim() + "\n\n" + acme.trim().replace("Acme Pay", "Google") }]);
+assert.deepEqual(clonedBullets(tex, fake).length, 3);
+assert.deepEqual(clonedBullets(tex, applyEdits(tex, [{ search: "  \\item Helped with code reviews", replace: "  \\item Helped with code reviews\n  \\item Cut load time by 40%" }])), []);
 
 // delete (empty REPLACE) and whitespace-drifted SEARCH
 assert.equal(parseBlocks(block("x", "")).at(0).replace, "");
