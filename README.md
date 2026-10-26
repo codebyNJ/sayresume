@@ -6,8 +6,9 @@ Built for [No Hands: The Wispr Challenge](https://www.wemakedevs.org/wispr) (WeM
 
 - **Live demo:** https://sayresume.vercel.app (Cloud mode only; Local needs the app on your own computer)
 - **Demo video:** _add link_
+- **Pitch (5 slides):** open [`pitch.html`](pitch.html) in a browser; arrow keys to move, Print → Save as PDF to export
 
-![SayResume: commands on the left, LaTeX in the middle, live PDF on the right](demo-voice/voice-session.png)
+![SayResume: commands on the left, LaTeX in the middle, live PDF on the right](docs/ui.png)
 
 ## The problem
 
