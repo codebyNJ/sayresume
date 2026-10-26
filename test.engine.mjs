@@ -76,6 +76,21 @@ mock(() => reply(++n === 1 ? block("\\item Nonexistent line", "x") : block("  \\
 d = await (await call("edit", { backend: "cloud", tex, cmd: "x" })).json();
 assert.equal(d.tries, 2); assert.match(seen[1].body.messages.at(-1).content, /not found/);
 
+// --- "add my job at Google": a model that overwrites the Acme job instead of adding is sent back; a question is accepted
+seen.length = 0; n = 0;
+mock(() => reply(++n === 1 ? block("\\textbf{Software Engineer, Acme Pay} \\hfill 2023 -- Present \\\\", "\\textbf{Software Engineer, Google} \\hfill 2023 -- Present \\\\") : "NOCHANGE: What was your title and dates at Google?"));
+d = await (await call("edit", { backend: "cloud", tex, cmd: "Um, add my job at Google" })).json();
+assert.match(d.message, /title and dates/); assert.match(seen[1].body.messages.at(-1).content, /only asked to ADD something.*acme/);
+// ...and an irrelevant edit (a move) for "add my job at Google" is rejected, not applied
+seen.length = 0; n = 0;
+mock(() => reply(++n === 1 ? "MOVE: Experience BEFORE Education" : "NOCHANGE: Which role did you have at Google?"));
+d = await (await call("edit", { backend: "cloud", tex, cmd: "Add my job at Google" })).json();
+assert.match(d.message, /Which role/); assert.match(seen[1].body.messages.at(-1).content, /doesn't add what the user mentioned \(google\)/);
+// ...but the same overwrite is fine when the user asked to change it
+n = 0; mock(() => reply(block("\\textbf{Software Engineer, Acme Pay} \\hfill 2023 -- Present \\\\", "\\textbf{Software Engineer, Google} \\hfill 2023 -- Present \\\\")));
+d = await (await call("edit", { backend: "cloud", tex, cmd: "Change my employer to Google" })).json();
+assert.match(d.tex, /Software Engineer, Google/);
+
 // --- input validation
 assert.equal((await call("edit", { backend: "cloud", tex, cmd: "  " })).status, 400);
 assert.equal((await call("edit", { backend: "nope", tex, cmd: "x" })).status, 400);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { parseBlocks, parseMoves, applyEdits, moveSection, extractLatex, noChange, newDuplicateSection, lostSection } from "./lib/edits.mjs";
+import { parseBlocks, parseMoves, applyEdits, moveSection, extractLatex, noChange, newDuplicateSection, lostSection, droppedWords, isAddOnly, notAdded } from "./lib/edits.mjs";
 
 const tex = readFileSync(new URL("./public/sample.tex", import.meta.url), "utf8");
 const block = (s, r) => `<<<<<<< SEARCH\n${s}\n=======\n${r}\n>>>>>>> REPLACE`;
@@ -17,6 +17,26 @@ assert.doesNotMatch(out, /Worked on the checkout/);
 // sloppy markers from a small model (seen with gemma-4-e2b): missing <<<<<<<, short =====
 assert.deepEqual(parseBlocks("SEARCH\na\nb\n=====\nc\n>>>>>>> REPLACE"), [{ search: "a\nb", replace: "c" }]);
 assert.equal(parseBlocks("```\n<<<<<<<SEARCH\na\n=======\n\nREPLACE\n```").length, 1);
+
+// no ======= divider at all (seen from a free cloud model): old text ends at ">>> REPLACE", new text runs to the next block
+assert.deepEqual(parseBlocks("<<<<<<< SEARCH\nFull-stack Developer\n>>>>>>> REPLACE\nFull Stack Engineer\n<<<<<<< SEARCH\nx\n>>>>>>> REPLACE\ny\nz"),
+  [{ search: "Full-stack Developer", replace: "Full Stack Engineer" }, { search: "x", replace: "y\nz" }]);
+assert.equal(parseBlocks("<<<<<<< SEARCH\na\n=======\nb\n>>>>>>> REPLACE").length, 1);   // the proper form still wins
+
+// "add" must not overwrite what's already there
+assert.ok(isAddOnly("Um, add my job at Google")); assert.ok(isAddOnly("Ah, also add AWS and Docker")); assert.ok(isAddOnly("Can you add a bullet"));
+assert.ok(!isAddOnly("Change my headline to X")); assert.ok(!isAddOnly("Make my bullets stronger")); assert.ok(!isAddOnly("Remove the projects section"));
+const renamed = applyEdits(tex, [{ search: "Software Engineer, Acme Pay", replace: "Software Engineer, Google" }]);
+assert.deepEqual(droppedWords(tex, renamed), ["acme"]);
+assert.deepEqual(droppedWords(tex, applyEdits(tex, [{ search: "PostgreSQL, Git", replace: "PostgreSQL, Git, AWS, Docker" }])), []);
+assert.deepEqual(droppedWords(tex, applyEdits(tex, [{ search: "  \\item Helped with code reviews", replace: "  \\item Helped with code reviews\n  \\item Reduced page load time by 40%" }])), []);
+
+// an "add" edit that adds none of what was asked (e.g. an unrelated move) is flagged
+assert.deepEqual(notAdded("add my job at Google", tex, tex), ["google"]);
+assert.deepEqual(notAdded("add my job at Google", tex, tex.replace("Git", "Git\n\\textbf{Engineer, Google}")), []);
+assert.deepEqual(notAdded("add AWS and Docker to my skills", tex, tex.replace("Git", "Git, AWS, Docker")), []);
+assert.deepEqual(notAdded("add a bullet about reduced page load time by forty percent", tex, tex.replace("Git", "Git\nReduced page load time")), []);
+assert.deepEqual(notAdded("add another bullet to the checkout page", tex, tex), []);       // nothing new was named -> no check
 
 // delete (empty REPLACE) and whitespace-drifted SEARCH
 assert.equal(parseBlocks(block("x", "")).at(0).replace, "");
